@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:tflite/tflite.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -22,15 +23,52 @@ class _HomeScreenState extends State<HomeScreen> {
       _image = File(pickedImage.path);
       _isLoaded = true;
     });
+    classifyImage(_image);
   }
 
   clickImagFromCamera() async {
-    var pickedImage = await picker.getImage(source: ImageSource.gallery);
+    var pickedImage = await picker.getImage(source: ImageSource.camera);
     if (pickedImage == null) return;
 
     setState(() {
       _image = File(pickedImage.path);
       _isLoaded = true;
+    });
+    classifyImage(_image);
+  }
+
+  loadModal() async {
+    await Tflite.loadModel(
+      model: 'assets/model.tflite',
+      labels: 'assets/labels.txt',
+    );
+  }
+
+  classifyImage(File image) async {
+    var output = await Tflite.runModelOnImage(
+      path: image.path,
+      numResults: 5,
+      threshold: 0.5,
+      imageMean: 127.5,
+      imageStd: 127.5,
+    );
+    setState(() {
+      _output = output;
+      _isLoaded = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    Tflite.close();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadModal().then((value) {
+      setState(() {});
     });
   }
 
@@ -132,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         children: [
                           GestureDetector(
-                            onTap: () {},
+                            onTap: clickImagFromCamera,
                             child: Container(
                               width: MediaQuery.of(context).size.width - 180,
                               alignment: Alignment.center,
@@ -155,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           SizedBox(height: 10),
                           GestureDetector(
-                            onTap: () {},
+                            onTap: pickImageFromGallery,
                             child: Container(
                               width: MediaQuery.of(context).size.width - 180,
                               alignment: Alignment.center,
@@ -168,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(6.0),
                               ),
                               child: Text(
-                                'Take a photo',
+                                'Camera Roll',
                                 style: TextStyle(
                                   fontSize: 18.0,
                                   color: Colors.white,
